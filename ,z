@@ -1,0 +1,80 @@
+#!/usr/bin/env python2
+
+'''
+Convert a newline-separated list of items to a comma-separated list.
+
+Useful for mixing work in the shell with work in SQL. For example
+1. Convert IDs in a CSV file into an "IN" clause for a SQL query
+2. Convert data into code, e.g. as constants or field names.
+
+For example, let's say you have file.txt containing:
+
+ID  title
+123 foo
+456 bar
+
+Then usage would be:
+
+$ cat file.txt | ,z 
+123,456
+
+I often pipe the output into the clipboard:
+$ cat file.txt | ,z | pbcopy -
+'''
+
+# Note using "#!/usr/bin/env python" in the hash-bang line will
+# cause the system to register the name (in ps etc.)
+# as "python" rather than the command name
+
+# future improvements:
+# - a file name is provided on the command line, read it instead of stdin
+# - unless the file name is -, in which case read stdin
+# - other delimiters, specified via argument
+
+import sys
+
+# The following exits cleanly on Ctrl-C,
+# while treating other exceptions as before.
+def cli_exception(type, value, tb):
+    if not issubclass(type, KeyboardInterrupt):
+        sys.__excepthook__(type, value, tb)
+if sys.stdin.isatty():
+    sys.excepthook=cli_exception
+
+import os
+def usage():
+    print "Usage: %s [OPTION] [PATHS]" % os.path.split(sys.argv[0])[1]
+    print "    Input: a newline-separated list of items to join on stdin"
+    print "    Output: items concatenated, joined by commas"
+    print "Options:"
+    print "     -s: single-quote list elements"
+    print "     -d: double-quote list elements"
+    print "     -c: concatenate items. Suppress comma delimiter."
+
+single_quote = False
+double_quote = False
+comma=True
+
+single_quote=True
+for arg in sys.argv:
+    if arg == "-n": # "No quote"
+        single_quote = False
+    elif arg == "-d":
+        double_quote = True
+    elif arg == "-c":
+        comma = False
+
+lines=[]
+for line in sys.stdin:
+    # escape quotes
+    str = line.replace("'","\\'").replace("\"","\\\"").strip()
+    if single_quote:
+        str = "'%s'" % (str)
+    elif double_quote:
+        str = "\"%s\"" % (line)
+    lines.append(str)
+    
+if comma:
+    print ",".join(lines)
+else:
+    print "".join(lines)
